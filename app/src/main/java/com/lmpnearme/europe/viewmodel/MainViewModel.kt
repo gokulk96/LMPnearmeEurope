@@ -95,12 +95,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun refresh() {
-        val apiKey = secureStorage.getApiKey() ?: run {
-            _uiState.value = UiState.NeedsApiKey
-            return
-        }
         viewModelScope.launch {
-            _uiState.value = UiState.Loading
             val zone = _currentZone.value ?: run {
                 if (_hasLocationPermission.value) {
                     val detected = try { locationHelper.detectZone() } catch (_: Exception) { null }
@@ -110,10 +105,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
             _currentZone.value = zone
-            repository.fetchSnapshot(apiKey, zone).fold(
-                onSuccess = { _uiState.value = UiState.Success(it) },
-                onFailure = { _uiState.value = UiState.Error(it.message ?: "Failed to load data") }
-            )
+            loadData(zone)
         }
+    }
+
+    private suspend fun loadData(zone: BiddingZone) {
+        val apiKey = secureStorage.getApiKey() ?: run {
+            _uiState.value = UiState.NeedsApiKey
+            return
+        }
+        _uiState.value = UiState.Loading
+        repository.fetchSnapshot(apiKey, zone).fold(
+            onSuccess = { _uiState.value = UiState.Success(it) },
+            onFailure = { _uiState.value = UiState.Error(it.message ?: "Failed to load data") }
+        )
     }
 }
