@@ -11,8 +11,18 @@ import java.time.format.DateTimeFormatter
 
 object XmlParser {
 
-    private val entsoDateFormat = DateTimeFormatter.ofPattern("yyyyMMddHHmm")
+    // ENTSO-E responses use ISO 8601 ("2026-06-19T00:00Z") in XML bodies,
+    // while the request parameters use compact "yyyyMMddHHmm" format.
+    private val compactFormat = DateTimeFormatter.ofPattern("yyyyMMddHHmm")
         .withZone(ZoneId.of("UTC"))
+
+    private fun parseEntsoDate(text: String): Instant? = try {
+        Instant.parse(text)           // ISO 8601: "2026-06-19T00:00Z"
+    } catch (_: Exception) {
+        try {
+            Instant.from(compactFormat.parse(text))  // fallback compact format
+        } catch (_: Exception) { null }
+    }
 
     fun parseDayAheadPrices(xml: String): List<Pair<Long, Double>> {
         val results = mutableListOf<Pair<Long, Double>>()
@@ -37,9 +47,7 @@ object XmlParser {
                         "timeInterval" -> {}
                         "start" -> if (inPeriod) {
                             val text = parser.nextText().trim()
-                            periodStart = try {
-                                Instant.from(entsoDateFormat.parse(text))
-                            } catch (_: Exception) { null }
+                            periodStart = parseEntsoDate(text)
                         }
                         "resolution" -> if (inPeriod) {
                             val res = parser.nextText().trim()
