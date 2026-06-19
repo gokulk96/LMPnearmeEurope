@@ -11,17 +11,21 @@ import java.time.format.DateTimeFormatter
 
 object XmlParser {
 
-    // ENTSO-E responses use ISO 8601 ("2026-06-19T00:00Z") in XML bodies,
-    // while the request parameters use compact "yyyyMMddHHmm" format.
+    // ENTSO-E XML responses use "yyyy-MM-dd'T'HH:mmZ" (no seconds) per official schema.
+    // Java's Instant.parse() requires seconds, so we need a custom formatter.
+    private val entsoFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mmX")
     private val compactFormat = DateTimeFormatter.ofPattern("yyyyMMddHHmm")
         .withZone(ZoneId.of("UTC"))
 
-    private fun parseEntsoDate(text: String): Instant? = try {
-        Instant.parse(text)           // ISO 8601: "2026-06-19T00:00Z"
-    } catch (_: Exception) {
-        try {
-            Instant.from(compactFormat.parse(text))  // fallback compact format
-        } catch (_: Exception) { null }
+    private fun parseEntsoDate(text: String): Instant? {
+        val trimmed = text.trim()
+        // Standard ISO-8601 with seconds (e.g. "2026-06-19T00:00:00Z")
+        try { return Instant.parse(trimmed) } catch (_: Exception) {}
+        // ENTSO-E format without seconds (e.g. "2026-06-19T00:00Z") — official schema pages 7, 11, 14
+        try { return entsoFormat.parse(trimmed, Instant::from) } catch (_: Exception) {}
+        // Compact request format (e.g. "202606190000")
+        try { return Instant.from(compactFormat.parse(trimmed)) } catch (_: Exception) {}
+        return null
     }
 
     fun parseDayAheadPrices(xml: String): List<Pair<Long, Double>> {
