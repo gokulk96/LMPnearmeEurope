@@ -15,7 +15,8 @@ class LocationHelper(private val context: Context) {
 
     @SuppressLint("MissingPermission")
     suspend fun detectZone(): BiddingZone? {
-        val location = getLastLocation() ?: getCurrentLocation() ?: return null
+        // Request a fresh fix first; last-known location may be stale (different country)
+        val location = getCurrentLocation() ?: getLastLocation() ?: return null
         val countryCode = reverseGeocode(location.first, location.second) ?: return null
         return BiddingZoneMapper.forCountryCode(countryCode)
     }

@@ -38,6 +38,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _hasLocationPermission = MutableStateFlow(false)
     val hasLocationPermission: StateFlow<Boolean> = _hasLocationPermission.asStateFlow()
 
+    // True only when the user explicitly picks a zone from the picker;
+    // cleared when location permission is granted or on next fresh detection.
+    private var manualZoneSelected = false
+
     val availableZones: List<BiddingZone> = BiddingZoneMapper.all()
 
     init {
@@ -45,11 +49,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (!secureStorage.hasApiKey()) {
             _uiState.value = UiState.NeedsApiKey
         } else {
+            // Load saved zone as fallback in case detection fails
             val savedZoneCode = secureStorage.getPreferredZone()
             if (savedZoneCode != null) {
                 _currentZone.value = BiddingZoneMapper.all().find { it.eicCode == savedZoneCode }
             }
-            refresh()
+            if (_hasLocationPermission.value) {
+                // Always re-detect on startup — user may have moved to a different country
+                detectZoneAndRefresh()
+            } else {
+                refresh()
+            }
         }
     }
 
@@ -65,16 +75,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onLocationPermissionGranted() {
         _hasLocationPermission.value = true
+        manualZoneSelected = false
         detectZoneAndRefresh()
     }
 
     fun detectZoneAndRefresh() {
+        val apiKey = secureStorage.getApiKey() ?: run {
+            _uiState.value = UiState.NeedsApiKey
+            return
+        }
         viewModelScope.launch {
+            _uiState.value = UiState.Loading
             val detectedZone = try { locationHelper.detectZone() } catch (_: Exception) { null }
             val zone = detectedZone ?: _currentZone.value ?: BiddingZoneMapper.default()
             _currentZone.value = zone
             secureStorage.savePreferredZone(zone.eicCode)
-            loadData(zone)
+            repository.fetchSnapshot(apiKey, zone).fold(
+                onSuccess = { _uiState.value = UiState.Success(it) },
+                onFailure = { _uiState.value = UiState.Error(it.message ?: "Failed to load data") }
+            )
         }
     }
 
@@ -89,6 +108,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun selectZone(zone: BiddingZone) {
+        manualZoneSelected = true
         _currentZone.value = zone
         secureStorage.savePreferredZone(zone.eicCode)
         refresh()
