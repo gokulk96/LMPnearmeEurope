@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LMP Near Me Europe</string>
+    <string name="api_key_hint">Enter your ENTSO-E API key</string>
+    <string name="save_key">Save API Key</string>
+    <string name="change_key">Change API Key</string>
+    <string name="great_time">Great time to use power</string>
+    <string name="fair_time">Fair time to use power</string>
+    <string name="high_time">Expensive time to use power</string>
+    <string name="price_label">/MWh · day-ahead LMP</string>
+    <string name="next_hours_label">NEXT HOURS · €/MWH · DAY-AHEAD</string>
+    <string name="resource_mix_label">RESOURCE MIX</string>
+    <string name="load_label">LOAD</string>
+    <string name="todays_range_label">TODAY\'S RANGE · DAY-AHEAD</string>
+    <string name="carbon_free">carbon-free</string>
+    <string name="low">low</string>
+    <string name="high">high</string>
+    <string name="location_permission_rationale">Location permission is needed to detect your European bidding zone for accurate electricity prices.</string>
+    <string name="entso_source">ENTSO-E Transparency Platform</string>
+</resources>
